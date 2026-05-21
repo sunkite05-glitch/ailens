@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>외계인들 (ALIENS) - Cosmic Archive</title>
 <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Orbitron:wght@500;700&family=Noto+Sans+KR:wght@300;500;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
     :root {
         --bg-color: #060214;
@@ -285,8 +287,8 @@
                     <input type="text" id="video-title" required placeholder="예: 외계 시네마 필름">
                 </div>
                 <div class="form-group">
-                    <label for="video-url">유튜브 비디오 링크</label>
-                    <input type="url" id="video-url" required placeholder="https://www.youtube.com/watch?v=...">
+                    <label for="video-url">유튜브 또는 구글 드라이브 공유 링크</label>
+                    <input type="url" id="video-url" required placeholder="https://www.youtube.com/watch?v=... 또는 https://drive.google.com/file/d/...">
                 </div>
                 <div class="form-group">
                     <label for="video-desc">영상 설명 및 아카이브 본문 (크레딧/사운드 구성원 명시 가능)</label>
@@ -307,98 +309,122 @@
 </footer>
 
 <script>
-    const ADMIN_PASSWORD = "1111";
+    // =========================================================================
+    // 🚀 파이어베이스 연동 코드
+    // =========================================================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyAusqcKDQqoXG73zRoD3XGQRUIKs6q7Y8w",
+      authDomain: "aailens.firebaseapp.com",
+      databaseURL: "https://aailens-default-rtdb.firebaseio.com",
+      projectId: "aailens",
+      storageBucket: "aailens.firebasestorage.app",
+      messagingSenderId: "282233417651",
+      appId: "1:282233417651:web:c05c78cfe769bf947e25c6",
+      measurementId: "G-5NPSEV6YXG"
+    };
+    
+    // Firebase 초기화
+    let isFirebaseReady = false;
+    let db = null;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        isFirebaseReady = true;
+    } catch(e) {
+        console.error("Firebase 초기화 에러:", e);
+    }
+
+    const ADMIN_PASSWORD = "1111"; // 편집자 비밀번호
     let isEditor = false;
     
-    // 고정값 상수로 완벽 보정: 이제 어떤 기기, 브라우저에서 열어도 무조건 이 3대 대역이 기본 생성됩니다.
-    const defaultSections = [
-        { 
-            id: 'sec_default', 
-            title: 'AI Experimental Film', 
-            desc: 'AI 툴을 활용하여 제작한 영상 아카이브입니다.' 
+    // =========================================================================
+    // ✨ 여기에 요청하신 기본 데이터 4개를 Video AI(sec_individual) 섹션에 박아두었습니다! ✨
+    // =========================================================================
+    let sections = [
+        { id: 'sec_default', title: 'AI Experimental Film', desc: 'AI 툴을 활용하여 제작한 영상 아카이브입니다.' },
+        { id: 'sec_commercial', title: 'Image AI', desc: '스터디 과정에서 만들어진 이미지 아카이브입니다.' },
+        { id: 'sec_individual', title: 'Video AI', desc: '스터디 과정에서 만들어진 영상 아카이브입니다.' }
+    ];
+    
+    let videos = [
+        {
+            id: 'vid_ai_1', sectionId: 'sec_individual', 
+            title: '세수 해달', url: 'https://youtu.be/ai9egBS9CTI', 
+            desc: 'Midjourney & Runway', date: '2026-05-21T10:00:00.000Z'
         },
-        { 
-            id: 'sec_commercial', 
-            title: 'Image AI', 
-            desc: '스터디 과정에서 만들어진 이미지 아카이브입니다.' 
+        {
+            id: 'vid_ai_2', sectionId: 'sec_individual', 
+            title: '맥주 해달', url: 'https://youtu.be/vw2bflVuaW8', 
+            desc: 'Midjourney & Runway', date: '2026-05-21T10:01:00.000Z'
         },
-        { 
-            id: 'sec_individual', 
-            title: 'Video AI', 
-            desc: '스터디 과정에서 만들어진 영상 아카이브입니다.' 
+        {
+            id: 'vid_ai_3', sectionId: 'sec_individual', 
+            title: '스톱모션 줌 인', url: 'https://youtu.be/4vM0QTSj-Fk', 
+            desc: 'Midjourney', date: '2026-05-21T10:02:00.000Z'
+        },
+        {
+            id: 'vid_ai_4', sectionId: 'sec_individual', 
+            title: '스톱모션 픽스 샷', url: 'https://youtu.be/FDyFw_NCAXU', 
+            desc: 'Midjourney', date: '2026-05-21T10:03:00.000Z'
         }
     ];
-
-    // 어떤 기기에서든 항상 존재해야 하는 기본 영상/사운드 아카이브 데이터 세트 고정 주입
-    const defaultVideos = [
-        {
-            id: 'vid_ai_1',
-            sectionId: 'sec_default',
-            title: '해달'S VLOG',
-            url: 'https://youtu.be/7DkeXNnzn3I', // 보관 중인 유튜브 영상 주소로 교체 가능
-            desc: 'The 46th activity of Kookmin University's book music study / 국민대학교 북악스터디 46기 활동',
-            date: '2026-05-21T00:00:00.000Z'
-
-	    id: 'vid_ai_1',
-            sectionId: 'sec_default',
-            title: '도입부',
-            url: 'https://youtu.be/BXgzjFea1wU', // 보관 중인 유튜브 영상 주소로 교체 가능
-            desc: 'The 46th activity of Kookmin University's book music study / 국민대학교 북악스터디 46기 활동',
-            date: '2026-05-21T00:00:00.000Z'
-        },
-        {
-            id: 'vid_comm_1',
-            sectionId: 'sec_commercial',
-            title: 'Midjourney VS Gemini',
-            url: 'https://youtu.be/fNAxdBbVIJE',
-            desc: 'Image comparison analysis image generated by applying the same prompt to Midjourney and Gemini / Midjourney와 Gemini에게 같은 프롬프트를 적용시켜 생성된 이미지 비교 분석 영상',
-            date: '2026-05-21T00:01:00.000Z'
-        },
-        {
-            id: 'vid_indiv_1',
-            sectionId: 'sec_individual',
-            title: 'Individual Short Film - "무제 (Untitled Space)"',
-            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-            desc: '[작품 소개]\n크루 개별의 철학적 가치관และ 독립 예술 단편 영화 기법을 고스란히 담아낸 외계인들 독립 시네마 아카이빙입니다.\n\n[크레딧 및 구성원]\n- 각본 / 연출: 김지나\n- 사운드 녹음 및 폴리 이펙트: 김지나, 송해연\n- 아트 디렉터: 전태린',
-            date: '2026-05-21T00:02:00.000Z'
-        }
-    ];
-
-    let sections = [];
-    let videos = [];
-
-    // [핵심 패치] 다른 기기에서 메모리가 꼬이지 않도록 로컬스토리지를 초기화 및 복구 검사하는 안전 장치
-    try {
-        const storedSections = localStorage.getItem('aliens_sections');
-        const storedVideos = localStorage.getItem('aliens_portfolio_v2');
-        
-        if (storedSections) sections = JSON.parse(storedSections);
-        if (storedVideos) videos = JSON.parse(storedVideos);
-    } catch (e) {
-        console.error("Local storage 데이터 동기화 에러 복구 중:", e);
-    }
-
-    // 다른 기기나 다른 브라우저라서 데이터가 전혀 없거나 불완전하다면 기본 영상/사운드 데이터를 강제로 강제 로드
-    if (!sections || !Array.isArray(sections) || sections.length === 0 || !videos || !Array.isArray(videos) || videos.length === 0) {
-        sections = [...defaultSections];
-        videos = [...defaultVideos];
-        localStorage.setItem('aliens_sections', JSON.stringify(sections));
-        localStorage.setItem('aliens_portfolio_v2', JSON.stringify(videos));
-    }
     
     let currentSectionId = null;
     let currentVideoId = null;
 
+    // 데이터 저장 함수 (Firebase로 전송)
     function saveData() {
-        localStorage.setItem('aliens_sections', JSON.stringify(sections));
-        localStorage.setItem('aliens_portfolio_v2', JSON.stringify(videos));
+        if (!isFirebaseReady) return;
+        db.ref('sections').set(sections);
+        db.ref('videos').set(videos);
     }
 
-    function getYouTubeId(url) {
-        if(!url) return null;
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
+    // ==========================================
+    // 데이터 실시간 동기화 (Firebase 연동)
+    // ==========================================
+    if (isFirebaseReady) {
+        // ✨ 파이어베이스가 텅 비어있으면 자동으로 기본값 밀어넣기 로직 추가! ✨
+        db.ref('/').once('value').then((snapshot) => {
+            if (!snapshot.exists() || !snapshot.val().sections) {
+                console.log("파이어베이스가 비어있어 기본 데이터를 자동 업로드합니다!");
+                saveData(); // 기본 세팅된 데이터를 파이어베이스에 업로드
+            }
+        });
+
+        // Firebase에서 섹션 데이터 불러오기
+        db.ref('sections').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                sections = Array.isArray(data) ? data : Object.values(data);
+            }
+            renderSections();
+            if(currentSectionId) openSection(currentSectionId);
+        });
+
+        // Firebase에서 비디오 데이터 불러오기
+        db.ref('videos').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                videos = Array.isArray(data) ? data : Object.values(data);
+            }
+            if(currentSectionId) renderVideos(currentSectionId);
+        });
+    }
+
+    // 유튜브 & 구글 드라이브 링크 파서
+    function parseVideoUrl(url) {
+        if (!url) return null;
+        const ytRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|\/shorts\/)([^#\&\?]*).*/;
+        const ytMatch = url.match(ytRegExp);
+        if (ytMatch && ytMatch[2].length === 11) {
+            return { type: 'youtube', id: ytMatch[2], embedUrl: 'https://www.youtube.com/embed/' + ytMatch[2] };
+        }
+        const driveRegExp = /\/file\/d\/([a-zA-Z0-9_-]+)/;
+        const driveMatch = url.match(driveRegExp);
+        if (driveMatch && driveMatch[1]) {
+            return { type: 'drive', id: driveMatch[1], embedUrl: 'https://drive.google.com/file/d/' + driveMatch[1] + '/preview' };
+        }
+        return null;
     }
 
     function checkPassword() {
@@ -562,11 +588,19 @@
             card.className = 'video-card';
             card.onclick = () => openDetail(v.id);
 
-            const ytId = getYouTubeId(v.url);
-            const thumbUrl = ytId ? 'https://img.youtube.com/vi/' + ytId + '/maxresdefault.jpg' : '';
+            const parsed = parseVideoUrl(v.url);
+            let thumbUrl = 'https://via.placeholder.com/640x360/120b26/00f0ff?text=Invalid+Link';
+            
+            if (parsed) {
+                if (parsed.type === 'youtube') {
+                    thumbUrl = 'https://img.youtube.com/vi/' + parsed.id + '/maxresdefault.jpg';
+                } else if (parsed.type === 'drive') {
+                    thumbUrl = 'https://via.placeholder.com/640x360/120b26/00f0ff?text=Google+Drive+Video';
+                }
+            }
 
             card.innerHTML = '<div class="thumbnail-container">' + 
-                    '<img class="thumbnail" src="' + thumbUrl + '" alt="thumbnail" onerror="this.src=\'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg\'">' + 
+                    '<img class="thumbnail" src="' + thumbUrl + '" alt="thumbnail" onerror="this.src=\'https://via.placeholder.com/640x360/120b26/00f0ff?text=Video\'">' + 
                 '</div>' +
                 '<div class="card-info">' +
                     '<h3>' + v.title + '</h3>' +
@@ -584,8 +618,13 @@
         document.getElementById('detail-title').innerText = video.title;
         document.getElementById('detail-desc').innerText = video.desc;
 
-        const ytId = getYouTubeId(video.url);
-        document.getElementById('detail-player').innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+        const parsed = parseVideoUrl(video.url);
+        if (parsed) {
+            document.getElementById('detail-player').innerHTML = '<iframe src="' + parsed.embedUrl + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+        } else {
+            document.getElementById('detail-player').innerHTML = '<div style="color:#ff0077; display:flex; align-items:center; justify-content:center; height:100%;">지원하지 않는 영상 링크입니다. (유튜브 또는 구글 드라이브 링크만 가능)</div>';
+        }
+        
         document.getElementById("delete-action-btn").style.display = isEditor ? "inline-block" : "none";
 
         showView('detail-view');
@@ -615,8 +654,8 @@
         const url = document.getElementById('video-url').value;
         const desc = document.getElementById('video-desc').value;
         
-        if(!getYouTubeId(url)) {
-            return alert('유효한 유튜브 링크 형식이 아닙니다.');
+        if(!parseVideoUrl(url)) {
+            return alert('유효한 유튜브 링크 또는 구글 드라이브 공유 링크가 아닙니다.');
         }
 
         const newVideo = {
@@ -645,9 +684,10 @@
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        renderSections();
+        if(!isFirebaseReady) {
+            renderSections();
+        }
     });
-    renderSections();
 </script>
 </body>
 </html>
