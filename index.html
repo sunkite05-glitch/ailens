@@ -289,7 +289,7 @@
                     <input type="url" id="video-url" required placeholder="https://www.youtube.com/watch?v=...">
                 </div>
                 <div class="form-group">
-                    <label for="video-desc">영상 설명 및 아카이브 본문</label>
+                    <label for="video-desc">영상 설명 및 아카이브 본문 (크레딧/사운드 구성원 명시 가능)</label>
                     <textarea id="video-desc" required placeholder="메세지를 적어주세요."></textarea>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -310,7 +310,7 @@
     const ADMIN_PASSWORD = "1111";
     let isEditor = false;
     
-    // [📸 이미지 스냅샷 분석 기반 초기 섹션 데이터 3개 완벽 기입]
+    // 고정값 상수로 완벽 보정: 이제 어떤 기기, 브라우저에서 열어도 무조건 이 3대 대역이 기본 생성됩니다.
     const defaultSections = [
         { 
             id: 'sec_default', 
@@ -329,14 +329,55 @@
         }
     ];
 
-    // 로컬스토리지에 기존 데이터가 전혀 없을 때만 기본 3대 섹션을 세팅합니다.
-    let sections = JSON.parse(localStorage.getItem('aliens_sections'));
-    if (!sections || sections.length === 0) {
-        sections = defaultSections;
-        localStorage.setItem('aliens_sections', JSON.stringify(sections));
+    // 어떤 기기에서든 항상 존재해야 하는 기본 영상/사운드 아카이브 데이터 세트 고정 주입
+    const defaultVideos = [
+        {
+            id: 'vid_ai_1',
+            sectionId: 'sec_default',
+            title: 'AI Experimental Film - "The Birth of Cosmic Aliens"',
+            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // 보관 중인 유튜브 영상 주소로 교체 가능
+            desc: '[기획 의도]\n인간의 통제를 벗어난 인공지능 그래픽 툴과 시각 소스를 융합하여 외계 문명과의 조우를 연출한 핵심 실험 영상입니다.\n\n[크레딧 및 구성원]\n- 연출 및 비주얼 디자인: 송해연\n- 사운드 디자인 및 믹싱: 김지나\n- 이펙트 어시스턴트: 전태린\n\n[사운드 연출 스펙]\nSpace Noise 및 모듈러 신디사이저 사운드를 다각도로 충돌시켜 우주의 거대하고 음산한 입체 음향을 형상화했습니다.',
+            date: '2026-05-21T00:00:00.000Z'
+        },
+        {
+            id: 'vid_comm_1',
+            sectionId: 'sec_commercial',
+            title: 'Commercial Brand Trailer - Cosmic Identity',
+            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            desc: '[브랜드 기획]\n우주적 스케일의 아이디어를 시네마틱 트레일러 기법으로 브랜딩 비주얼화 한 대중 타겟 광고 디자인입니다.\n\n[크레딧 및 구성원]\n- 총괄 프로듀서: 전태린\n- 촬영 및 조명 스크립트: 송해연\n- 오디오 디렉팅 및 엠비언트 사운드: 김지나',
+            date: '2026-05-21T00:01:00.000Z'
+        },
+        {
+            id: 'vid_indiv_1',
+            sectionId: 'sec_individual',
+            title: 'Individual Short Film - "무제 (Untitled Space)"',
+            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            desc: '[작품 소개]\n크루 개별의 철학적 가치관และ 독립 예술 단편 영화 기법을 고스란히 담아낸 외계인들 독립 시네마 아카이빙입니다.\n\n[크레딧 및 구성원]\n- 각본 / 연출: 김지나\n- 사운드 녹음 및 폴리 이펙트: 김지나, 송해연\n- 아트 디렉터: 전태린',
+            date: '2026-05-21T00:02:00.000Z'
+        }
+    ];
+
+    let sections = [];
+    let videos = [];
+
+    // [핵심 패치] 다른 기기에서 메모리가 꼬이지 않도록 로컬스토리지를 초기화 및 복구 검사하는 안전 장치
+    try {
+        const storedSections = localStorage.getItem('aliens_sections');
+        const storedVideos = localStorage.getItem('aliens_portfolio_v2');
+        
+        if (storedSections) sections = JSON.parse(storedSections);
+        if (storedVideos) videos = JSON.parse(storedVideos);
+    } catch (e) {
+        console.error("Local storage 데이터 동기화 에러 복구 중:", e);
     }
-    
-    let videos = JSON.parse(localStorage.getItem('aliens_portfolio_v2')) || [];
+
+    // 다른 기기나 다른 브라우저라서 데이터가 전혀 없거나 불완전하다면 기본 영상/사운드 데이터를 강제로 강제 로드
+    if (!sections || !Array.isArray(sections) || sections.length === 0 || !videos || !Array.isArray(videos) || videos.length === 0) {
+        sections = [...defaultSections];
+        videos = [...defaultVideos];
+        localStorage.setItem('aliens_sections', JSON.stringify(sections));
+        localStorage.setItem('aliens_portfolio_v2', JSON.stringify(videos));
+    }
     
     let currentSectionId = null;
     let currentVideoId = null;
@@ -363,6 +404,7 @@
             document.getElementById("section-write-btn").style.display = "inline-block";
             document.getElementById("delete-action-btn").style.display = "inline-block";
             renderSections();
+            if(currentSectionId) openSection(currentSectionId);
         } else {
             alert("교신 실패: 코드가 정합하지 않습니다.");
             input.value = "";
@@ -371,7 +413,8 @@
 
     function showView(viewId) {
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-        document.getElementById(viewId).classList.add('active');
+        const targetView = document.getElementById(viewId);
+        if (targetView) targetView.classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -384,11 +427,8 @@
     }
 
     function backToSection() {
-        if(currentSectionId) {
-            openSection(currentSectionId);
-        } else {
-            navToHome();
-        }
+        if(currentSectionId) openSection(currentSectionId);
+        else navToHome();
     }
 
     function showEditSectionForm(secId) {
@@ -433,11 +473,7 @@
                 alert('🪐 섹션의 차원 사양이 성공적으로 수정되었습니다.');
             }
         } else {
-            const newSec = {
-                id: 'sec_' + Date.now(),
-                title: title,
-                desc: desc
-            };
+            const newSec = { id: 'sec_' + Date.now(), title: title, desc: desc };
             sections.push(newSec);
             alert('🌌 우주 영역에 새로운 섹션 페이지가 개설되었습니다.');
         }
@@ -468,7 +504,6 @@
         sections.forEach(sec => {
             const card = document.createElement('div');
             card.className = 'section-card';
-            
             card.onclick = () => openSection(sec.id);
 
             let manageBtnHtml = '';
@@ -493,10 +528,8 @@
         currentSectionId = secId;
         document.getElementById('hero-title').innerText = sec.title;
         document.getElementById('hero-subtitle').innerText = "SECTION ARCHIVE GATE";
-
         document.getElementById('current-section-title').innerText = "🪐 " + sec.title;
         document.getElementById('current-section-desc').innerText = sec.desc;
-
         document.getElementById("section-write-btn").style.display = isEditor ? "inline-block" : "none";
 
         renderVideos(secId);
@@ -530,7 +563,7 @@
                 '</div>' +
                 '<div class="card-info">' +
                     '<h3>' + v.title + '</h3>' +
-                    '<p>' + v.desc + '</p>' +
+                    '<p>' + v.desc.split('\n')[0] + '</p>' +
                 '</div>';
             grid.appendChild(card);
         });
@@ -546,7 +579,6 @@
 
         const ytId = getYouTubeId(video.url);
         document.getElementById('detail-player').innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
-
         document.getElementById("delete-action-btn").style.display = isEditor ? "inline-block" : "none";
 
         showView('detail-view');
@@ -605,6 +637,9 @@
         }
     }
 
+    document.addEventListener("DOMContentLoaded", function() {
+        renderSections();
+    });
     renderSections();
 </script>
 </body>
