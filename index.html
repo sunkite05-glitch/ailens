@@ -329,16 +329,31 @@
     const ADMIN_PASSWORD = "1111";
     let isEditor = false;
     
-    let sections = JSON.parse(localStorage.getItem('aliens_sections')) || [
-        { id: 'sec_default', title: 'AI Experimental Film', desc: 'AI 툴을 활용하여 시각적 한계를 시험하고 영상 디자인의 확장을 모색하는 메인 실험실 아카이브입니다.' }
+    // 💡 다른 기기에서도 기본적으로 보이도록 고정할 섹션들을 여기에 배열 형태로 선언합니다.
+    let sections = [
+        { 
+            id: 'sec_default', 
+            title: 'AI Experimental Film', 
+            desc: 'AI 툴을 활용하여 시각적 한계를 시험하고 영상 디자인의 확장을 모색하는 메인 실험실 아카이브입니다.' 
+        },
+        { 
+            id: 'sec_cinema', 
+            title: 'AI 시네마 프로젝트', 
+            desc: '외계인들 팀이 제작한 AI 기반 단편 영화 및 시나리오 시각화 아카이브입니다.' 
+        },
+        { 
+            id: 'sec_brand', 
+            title: '브랜드 비주얼 아트', 
+            desc: '컨셉 비주얼과 마케팅 방향성을 접목한 우주적 영상 실험실입니다.' 
+        }
     ];
+    
     let videos = JSON.parse(localStorage.getItem('aliens_portfolio_v2')) || [];
     
     let currentSectionId = null;
     let currentVideoId = null;
 
     function saveData() {
-        localStorage.setItem('aliens_sections', JSON.stringify(sections));
         localStorage.setItem('aliens_portfolio_v2', JSON.stringify(videos));
     }
 
@@ -448,10 +463,9 @@
                 desc: desc
             };
             sections.push(newSec);
-            alert('🌌 우주 영역에 새로운 섹션 페이지가 개설되었습니다.');
+            alert('🌌 우주 영역에 새로운 섹션 페이지가 개설되었습니다. (주의: 임시 저장 상태이므로 영구 추가는 HTML 코드 수정을 권장합니다)');
         }
 
-        saveData();
         e.target.reset();
         navToHome();
     }
@@ -460,11 +474,11 @@
         const id = document.getElementById('edit-section-id').value;
         if(!id) return;
 
-        if(confirm('정말로 이 섹션을 통째로 파괴하시겠습니까?\n내부에 소속된 모든 비디오 주파수도 함께 영구 삭제됩니다.')) {
+        if(confirm('정말로 이 섹션을 통째로 파괴하시겠습니까?')) {
             sections = sections.filter(s => s.id !== id);
             videos = videos.filter(v => v.sectionId !== id);
             saveData();
-            alert('💥 해당 섹션의 주파수 대역이 우주 공간에서 소멸되었습니다.');
+            alert('💥 해당 섹션의 주파수 대역이 소멸되었습니다.');
             navToHome();
         }
     }
@@ -482,7 +496,7 @@
 
             let manageBtnHtml = '';
             if (isEditor) {
-                manageBtnHtml = '<div class="section-manage-btn" title="섹션 관리" onclick="event.stopPropagation(); showEditSectionForm(\'' + sec.id + '\');">⚙️</div>';
+                manageBtnHtml = '<div class="section-manage-btn" title="섹션 관리" onclick="event.stopPropagation(); showEditSectionForm('' + sec.id + '');">⚙️</div>';
             }
 
             card.innerHTML = manageBtnHtml + 
@@ -490,7 +504,7 @@
                     '<h3>🚀 ' + sec.title + '</h3>' +
                     '<p>' + sec.desc + '</p>' +
                 '</div>' +
-                '<div style="font-size:12px; color:var(--neon-cyan); font-family:\'Orbitron\', sans-serif; text-align:right; margin-top:10px;">ENTER ARCHIVE →</div>';
+                '<div style="font-size:12px; color:var(--neon-cyan); font-family:'Orbitron', sans-serif; text-align:right; margin-top:10px;">ENTER ARCHIVE →</div>';
             grid.appendChild(card);
         });
     }
@@ -537,7 +551,7 @@
             if(v.type === 'url') {
                 const ytId = getYouTubeId(v.url);
                 const thumbUrl = ytId ? 'https://img.youtube.com/vi/' + ytId + '/maxresdefault.jpg' : '';
-                thumbHtml = '<img class="thumbnail" src="' + thumbUrl + '" alt="thumbnail" onerror="this.src=\'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg\'">';
+                thumbHtml = '<img class="thumbnail" src="' + thumbUrl + '" alt="thumbnail" onerror="this.src='https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg'">';
             } else {
                 thumbHtml = '<div class="file-icon-placeholder">🛸</div>';
             }
@@ -610,7 +624,6 @@
             if(fileInput.files.length === 0) {
                 return alert('동영상 파일을 선택해주세요.');
             }
-            // 브라우저 런타임 메모리 주소 생성
             finalUrl = URL.createObjectURL(fileInput.files[0]);
         }
 
@@ -628,7 +641,6 @@
         saveData();
 
         document.getElementById('upload-form').reset();
-        // 첨부방식 디폴트(유튜브)로 재설정
         document.getElementById('upload-type').value = 'url';
         toggleUploadType();
 
